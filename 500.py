@@ -10,46 +10,27 @@ Two or more rectangles overlap if they have a common area. Meeting along an edge
 
 
 import sys
-from itertools import chain
 
-# X dimension already intersects
 def is_intersects(r1, r2):
-    _, y1, _, y2 = r1
-    _, b1, _, b2 = r2
-
-    return y1 < b1 < y2 or y1 < b2 < y2 or b1 < y1 < b2 or b1 < y2 < b2
-
-def is_intersects_r(r1, r2):
     x1, y1, x2, y2 = r1
     a1, b1, a2, b2 = r2
 
-    return (y1 < b1 < y2 or y1 < b2 < y2 or b1 < y1 < b2 or b1 < y2 < b2) and\
-        (x1 < a1 < x2 or x1 < a2 < x2 or a1 < x1 < a2 or a1 < x2 < a2)
+    return (y1 <= b1 <= y2 or y1 <= b2 <= y2 or b1 <= y1 <= b2 or b1 <= y2 <= b2) and\
+        (x1 <= a1 <= x2 or x1 <= a2 <= x2 or a1 <= x1 <= a2 or a1 <= x2 <= a2)
 
-def inside(r, p):
-    x, y = p
+def intersection(r1, r2):
+    x1, y1, x2, y2 = r1
+    a1, b1, a2, b2 = r2
+
+    return (max(x1, a1), max(y1, b1), min(x2, a2), min(y2, b2))
+
+def square(r):
     x1, y1, x2, y2 = r
-
-    return (x1 < x < x2) and (y1 < y < y2)
-
-def is_intersects_r2(r1, r2):
-    x1, y1, x2, y2 = r1
-    a1, b1, a2, b2 = r2
-
-    for p in ((x1, y1), (x1, y2), (x2, y1), (x2, y2)):
-        if inside(r2, p):
-            return True
-
-    for p in ((a1, b1), (a1, b2), (a2, b1), (a2, b2)):
-        if inside(r1, p):
-            return True
-
-    return False
-
+    return (x2 - x1) * (y2 - y1)
 
 
 class SoManyRectangles:
-    def maxOverlapBF(self, x1arr, y1arr, x2arr, y2arr):
+    def maxOverlap(self, x1arr, y1arr, x2arr, y2arr):
         rects = set()
         rect_counts = {}
         for r in zip(x1arr, y1arr, x2arr, y2arr):
@@ -66,111 +47,59 @@ class SoManyRectangles:
         rects = list(rects)
         N = len(rects)
 
-        # WRONG target value : NOT a rectangle with most intersections
-        # BUT a subrect belonging to most rects at once
-        # POSSIBLY it is also an error in OPT case
         for i in range(N):
             r1 = rects[i]
             isec_cntr = rect_counts[r1]
             for j in range(N):
                 r2 = rects[j]
-                if i != j and is_intersects_r2(r1, r2):
-                    isec_cntr += rect_counts[r2]
+
+                if i != j and is_intersects(r1, r2):
+                    r1 = intersection(r1, r2)
+
+                    if square(r1) > 0:
+                        isec_cntr += rect_counts[r2]
+
 
             max_isec_cntr = max(max_isec_cntr, isec_cntr)
 
         return max_isec_cntr
 
-    def maxOverlap(self, x1arr, y1arr, x2arr, y2arr):
-        rects_x1 = {}
-
-        min_x = sys.maxsize
-        max_x = -sys.maxsize
-        rect_counts = {}
-        X = set()
-        for (x1, y1, x2, y2) in zip(x1arr, y1arr, x2arr, y2arr):
-            X.add(x1)
-            X.add(x2)
-            r = (x1, y1, x2, y2)
-            if r not in rect_counts.keys():
-                rect_counts[r] = 1
-            else:
-                rect_counts[r] += 1
-
-
-            if x1 not in rects_x1.keys():
-                rects_x1[x1] = []
-
-            rects_x1[x1].append(r)
-
-            min_x = min(min_x, x1, x2)
-            max_x = max(max_x, x1, x2)
-
-
-        XL = list(X)
-        XL.sort()
-        active_rects = {}
-
-        max_isec_cntr  = -sys.maxsize
-        for x in XL:
-            if x in active_rects.keys():
-                del active_rects[x]
-
-            if x not in rects_x1.keys():
-                continue
-
-            for r in rects_x1[x]:
-                x1, y2, x2, y2 = r
-                if x2 not in active_rects.keys():
-                    active_rects[x2] = []
-
-                active_rects[x2].append(r)
-
-
-            rects = chain(*active_rects.values())
-            for r1 in rects:
-                isec_cntr = rect_counts[r1]
-                for r2 in rects:
-                    if r1 != r2 and is_intersects(r1, r2):
-                        isec_cntr += rect_counts[r2]
-
-                max_isec_cntr = max(max_isec_cntr, isec_cntr)
-
-
-        return max_isec_cntr
-
 
 S = SoManyRectangles()
-print(S.maxOverlapBF([0, 90],\
+print(S.maxOverlap([0, 0, 1], [0, 0, 0], [2, 1, 2], [1, 1, 1]))
+
+print(S.maxOverlap([0, 0, 0, 0, 0],\
+[0, 0, 0, 0, 0],\
+[1, 1, 1, 1, 1],\
+[1, 1, 1, 1, 1]
+))
+
+
+print(S.maxOverlap([0, 90],\
 [0, 90],\
 [100, 200],\
 [100, 200]
 ))
 
-print(S.maxOverlapBF([0, 90, 95],\
+print(S.maxOverlap([0, 90, 95],\
 [0, 90, 95],\
 [100, 200, 110],\
 [100, 200, 110]
 ))
 
-print(S.maxOverlapBF([0, 90, 85],\
+print(S.maxOverlap([0, 90, 85],\
 [0, 90, 85],\
 [100, 200, 95],\
 [100, 200, 95]
 ))
 
-# FAILS BF vs Opt
-print(S.maxOverlapBF([0, 90, 0],\
+print(S.maxOverlap([0, 90, 0],\
 [0, 90, 0],\
 [100, 200, 85],\
 [100, 200, 85]
 ))
 
-print(S.maxOverlapBF([0, 0, 0, 0, 0],\
-[0, 0, 0, 0, 0],\
-[1, 1, 1, 1, 1],\
-[1, 1, 1, 1, 1]
-))
+
 
 
 # 10 expected
@@ -181,3 +110,4 @@ print(S.maxOverlap([-85028107, -865991778, -449147890, -744904785, -886188950, -
 
 # 11 expected
 print(S.maxOverlap([-328069945, 67735397, -892657562, -165093050, -559275388, -754006395, 325974984, -898364644, -710373715, -959457054, -823050212, -995343144, 150393485, -630354810, 430905060, -105617510, -624691677, 664751278, -609652457, -940422577, -958960106, -826326849, -963375152, -662564893, -873545164, -91341767, -535632001, -121910469, -781317967, 339852755, -497618250, -607536380, -998103775, -989417082, -892547865, -639154654, -820199079, -181568237, -889185128, -908386930, -358938084, -752694383, -857467590, 534775584, -863558142, 224891136, 101678051, 276831229, -470544526, -820128548], [-350274026, -996980611, -941674927, -255473028, -463063318, -998552961, -808644220, -777764638, -209432447, -984137971, -946018977, -592229837, -603942000, -952804175, -573517413, -482002812, -44426697, -962960212, -771257730, 14448147, -890718701, -512811576, -40885917, -873643171, -573285127, -929047098, -181865568, -382045777, -733028326, -898417630, -898617272, -606812936, -957158015, -938135465, -127684980, -136208193, -942458695, -739691970, -996143535, -831598725, 493013037, -138975813, -927869131, -709507680, -895480314, -851611327, -972166957, -192050434, -826266975, -599903045], [626787594, 265814464, -81968524, -89838564, -473799417, -629415441, 579574372, -784609853, -427529643, -955698432, -799102495, 723751864, 413113116, -255120871, 706605866, -2662229, -502395907, 755229439, 964655389, -594051330, -794183709, -262632890, -959853203, -394799340, -715714555, 25484417, -124000088, 667315225, -484713675, 476317446, -453151462, -521063907, -552453793, 50727891, -620636125, -141324780, -500696520, 926942829, 393969068, -709485105, 745173029, -308736087, -388870761, 784568162, -839793503, 941204212, 222129769, 428689682, -341523821, -445820498], [34203574, -323760611, 441336740, -232923285, 794971943, -832458641, -788780545, -634463890, 32643904, -717897733, -922174761, -466054021, -227095625, -935314788, -191191720, 875118674, 17911457, -696517456, 562664317, 940360753, -848481973, 918876240, 552601043, -224278454, 209097324, -872114369, 384070685, -300262213, -368726785, -648945978, 676417, -338588825, -928408845, 587681550, 289170657, 288848107, -941698662, -730701635, -689094993, 569525757, 871267177, 856446216, -229151943, -538168170, -503038274, 664970212, -924757549, 995335976, -648102877, 244745850]))
+
